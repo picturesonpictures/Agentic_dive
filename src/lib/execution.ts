@@ -1,5 +1,5 @@
 import type { Node, Edge } from '@xyflow/react'
-import type { TextInputNodeData, ConcatNodeData, ModelNodeData, HttpNodeData, ConditionalNodeData, OutputNodeData } from '../types/flow'
+import type { TextInputNodeData, ConcatNodeData, ModelNodeData, HttpNodeData, ConditionalNodeData } from '../types/flow'
 import { useMemoryStore } from '../store/memoryStore'
 
 type UpdateNodeFn = (id: string, data: Record<string, unknown>) => void
@@ -179,7 +179,7 @@ export async function runFlow(
     }
 
     else if (node.type === 'output') {
-      void (node.data as unknown as OutputNodeData)
+      // node.data is typed as OutputNodeData but only the incoming edge value is used
       const incomingEdges = edges.filter(e => e.target === node.id)
       const edgeIn = incomingEdges[0]
       const result = edgeIn ? resolveEdgeValue(outputs, edgeIn) : ''

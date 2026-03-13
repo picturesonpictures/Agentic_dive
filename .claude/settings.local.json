@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:openrouter.ai)",
+      "WebFetch(domain:www.teamday.ai)",
+      "Bash(npm create vite@latest . -- --template react-ts --yes)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/Chango/AppData/Local/Programs/**)",
+      "Read(//c/Users/Chango/AppData/Roaming/**)",
+      "Bash(cmd.exe /c \"node --version 2>&1 && npm --version 2>&1\")",
+      "Bash(cmd.exe /c \"node --version\")",
+      "Bash(cmd.exe /c \"npm --version\")",
+      "Bash(cmd.exe /c \"where node\")",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

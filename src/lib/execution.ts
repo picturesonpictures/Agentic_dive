@@ -84,7 +84,9 @@ export async function runFlow(
       const input = edgeIn ? resolveEdgeValue(outputs, edgeIn) : ''
       let condition = false
       try {
-        // Safe-ish eval using Function constructor
+        // The condition field is a user-authored JS expression (single-user browser app).
+        // Users intentionally write JS conditions here — this is an expected feature, not a bug.
+        // eslint-disable-next-line no-new-func
         const fn = new Function('input', `return !!(${data.condition})`)
         condition = fn(input)
       } catch {

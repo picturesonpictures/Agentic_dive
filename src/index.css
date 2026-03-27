@@ -20,6 +20,58 @@
          w-full focus:outline-none focus:border-violet-500;
 }
 
+/* ─── Execution visualization ─────────────────────────────────────────── */
+@keyframes node-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+  50% { box-shadow: 0 0 12px 4px rgba(139, 92, 246, 0.6); }
+}
+@keyframes node-done-flash {
+  0% { box-shadow: 0 0 12px 4px rgba(34, 197, 94, 0.6); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+.node-running {
+  animation: node-pulse 1.5s ease-in-out infinite;
+}
+.node-done {
+  animation: node-done-flash 0.5s ease-out forwards;
+}
+.node-error {
+  box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.5);
+}
+
+/* ─── Node resizer handle styling ─────────────────────────────────────── */
+.react-flow__resize-control.line {
+  border-color: transparent !important;
+}
+.react-flow__resize-control.line:hover,
+.react-flow__node.selected .react-flow__resize-control.line {
+  border-color: #7c3aed !important;
+}
+.react-flow__resize-control.handle {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 2px !important;
+  background: #7c3aed !important;
+  border: none !important;
+}
+
+/* ─── Context menu styling ────────────────────────────────────────────── */
+.context-menu {
+  @apply fixed z-50 bg-zinc-800 border border-zinc-600 rounded-lg shadow-2xl py-1;
+  min-width: 160px;
+}
+.context-menu-item {
+  @apply px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 cursor-pointer flex items-center gap-2 transition-colors;
+}
+.context-menu-separator {
+  @apply border-t border-zinc-700 my-1;
+}
+.context-menu-label {
+  @apply px-3 py-1 text-zinc-500 uppercase tracking-wider;
+  font-size: 10px;
+}
+
 /* ─── Prose tweaks for markdown output ───────────────────────────────────── */
 .prose-invert code {
   @apply bg-zinc-800 px-1 rounded text-[11px];

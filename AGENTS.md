@@ -184,3 +184,119 @@ After any change, verify:
 5. Click Run — node executes and produces output
 6. Reload page — node layout persists, runtime state resets
 7. MiniMap shows node with an appropriate color (update `nodeColor` in App.tsx)
+
+---
+
+## Custom Agents Registry
+
+### Flow Analysis & Quality Loop
+
+The following agents form a unified quality-feedback system for AI-generated flows:
+
+#### 1. **Flow Analyst** (`.github/agents/flow-analyst.agent.md`)
+
+**Purpose**: Validates generated flows against 5-tier quality criteria.
+
+**Input**: FlowFile JSON + original description
+
+**Output**: Structured feedback (status: pass | fail | needs-refinement)
+
+**Tiers**:
+
+1. Structural validity (schema, node types, edge format)
+2. Data flow logic (connectivity, orphan detection, variable consistency)
+3. Layout & readability (canvas organization, left-to-right flow)
+4. Intent alignment (does it solve the original description?)
+5. Optimization opportunities (suggestions for improvement)
+
+**Use**: Validate any generated flow before running. Run after AI Architect generates.
+
+#### 2. **Flow Executor** (`.github/agents/flow-executor.agent.md`)
+
+**Purpose**: Executes flows step-by-step in sandboxed environment, detects runtime errors.
+
+**Input**: FlowFile JSON + test inputs (node value assignments)
+
+**Output**: Execution report with node traces, errors, suggestions
+
+**Capabilities**:
+
+- Topological sort execution (Kahn's algorithm)
+- Error detection (missing inputs, type mismatches, syntax errors, circular deps)
+- Simulated LLM calls (no actual API fees during testing)
+- Variable state tracking (buffers, variables, memory)
+- Execution modes: trace (default), debug (with snapshots), profile (timings)
+
+**Use**: Test a flow before deploying to production. Detects issues Flow Analyst can't (runtime failures, API response format problems).
+
+#### 3. **Flow Orchestrator** (`.github/agents/flow-orchestrator.agent.md`)
+
+**Purpose**: Coordinates AI Architect + Flow Analyst + Flow Executor for iterative refinement.
+
+**Input**: Natural language flow description + optional constraints (max iterations, focus areas)
+
+**Output**: Production-ready FlowFile JSON (validated + executed)
+
+**Process**:
+
+```text
+User description
+  ↓ [Phase 1: Generate]
+AI Architect generates flow
+  ↓ [Phase 2: Validate]
+Flow Analyst checks structure + intent
+  ↓ [Decision]
+  ├─ Status = pass → [Exit: Success]
+  ├─ Status = needs-refinement (iteration < max) → [Phase 3: Refine + loop]
+  └─ Status = fail → [Phase 3: Repair + loop]
+```
+
+- Max 3 iterations (generate → validate → refine)
+- Responsive feedback loops (architect gets specific repair prompts)
+- Partial success handling (if max iterations hit, return best attempt)
+
+**Use**: Generate high-quality flows from descriptions with automatic refinement. Entry point for users.
+
+### Workflow Integration
+
+**Typical flow**:
+
+```text
+User (with description)
+  → Flow Orchestrator
+  → Phase 1: AI Architect (generates)
+  → Phase 2: Flow Analyst (validates structure + intent)
+  → Phase 3: Flow Executor (tests runtime)
+  → If passes: Return to user ✅
+  → If fails: Refine loop (back to Phase 1 with feedback)
+```
+
+**Manual usage**:
+
+- Validate existing flow: `Flow Analyst` + `Flow Executor` directly
+- Debug failing flow: `Flow Executor` alone (detailed traces)
+- Batch refine flows: `Flow Orchestrator` with focus areas
+- One-shot generation: `AI Architect` alone (skip validation)
+
+### Quality Metrics (from reports)
+
+**Flow Analyst**:
+
+- `status`: pass | fail | needs-refinement
+- Per-tier pass/fail
+- Blocking issues count
+- Unused node count
+
+**Flow Executor**:
+
+- `executionTime`: ms
+- Coverage: % of nodes visited
+- Critical failures: count
+- Error severity distribution
+
+**Flow Orchestrator**:
+
+- Iterations to success
+- Feedback convergence
+- Per-iteration pass/fail status
+- Final quality score (tiers passed)

@@ -44,6 +44,15 @@ const DEFAULT_EDGES: Edge[] = [
   { id: 'e2', source: 'model-1', sourceHandle: 'out', target: 'output-1', targetHandle: 'in' },
 ]
 
+// ─── History snapshot ─────────────────────────────────────────────────────────
+
+interface Snapshot {
+  nodes: Node[]
+  edges: Edge[]
+}
+
+const MAX_HISTORY = 50
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 interface FlowState {
@@ -52,14 +61,26 @@ interface FlowState {
   apiKey: string
   isRunning: boolean
 
+  // History (undo/redo)
+  past: Snapshot[]
+  future: Snapshot[]
+
   setApiKey: (key: string) => void
   onNodesChange: (changes: NodeChange[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect: (connection: Connection) => void
   updateNodeData: (id: string, patch: Record<string, unknown>) => void
-  addNode: (type: string) => void
+  addNode: (type: string, position?: { x: number; y: number }) => string
+  duplicateNodes: (nodeIds: string[]) => void
   loadFlow: (nodes: Node[], edges: Edge[]) => void
   run: () => Promise<void>
+
+  // History actions
+  pushSnapshot: () => void
+  undo: () => void
+  redo: () => void
+  canUndo: () => boolean
+  canRedo: () => boolean
 }
 
 let nodeCounter = 10
@@ -71,17 +92,79 @@ export const useFlowStore = create<FlowState>()(
       edges: DEFAULT_EDGES,
       apiKey: '',
       isRunning: false,
+      past: [],
+      future: [],
 
       setApiKey: key => set({ apiKey: key }),
 
-      onNodesChange: changes =>
-        set(s => ({ nodes: applyNodeChanges(changes, s.nodes) })),
+      // ── History helpers ─────────────────────────────────────────────────
 
-      onEdgesChange: changes =>
-        set(s => ({ edges: applyEdgeChanges(changes, s.edges) })),
+      pushSnapshot: () => {
+        const { nodes, edges, past } = get()
+        const snapshot: Snapshot = {
+          nodes: JSON.parse(JSON.stringify(nodes)),
+          edges: JSON.parse(JSON.stringify(edges)),
+        }
+        set({
+          past: [...past.slice(-(MAX_HISTORY - 1)), snapshot],
+          future: [], // new mutation clears redo stack
+        })
+      },
 
-      onConnect: connection =>
-        set(s => ({ edges: addEdge({ ...connection, animated: true }, s.edges) })),
+      undo: () => {
+        const { past, nodes, edges } = get()
+        if (past.length === 0) return
+        const prev = past[past.length - 1]
+        const currentSnapshot: Snapshot = {
+          nodes: JSON.parse(JSON.stringify(nodes)),
+          edges: JSON.parse(JSON.stringify(edges)),
+        }
+        set(s => ({
+          nodes: prev.nodes,
+          edges: prev.edges,
+          past: s.past.slice(0, -1),
+          future: [...s.future, currentSnapshot],
+        }))
+      },
+
+      redo: () => {
+        const { future, nodes, edges } = get()
+        if (future.length === 0) return
+        const next = future[future.length - 1]
+        const currentSnapshot: Snapshot = {
+          nodes: JSON.parse(JSON.stringify(nodes)),
+          edges: JSON.parse(JSON.stringify(edges)),
+        }
+        set(s => ({
+          nodes: next.nodes,
+          edges: next.edges,
+          future: s.future.slice(0, -1),
+          past: [...s.past, currentSnapshot],
+        }))
+      },
+
+      canUndo: () => get().past.length > 0,
+      canRedo: () => get().future.length > 0,
+
+      // ── Node/edge changes ───────────────────────────────────────────────
+
+      onNodesChange: changes => {
+        // Snapshot before structural changes (remove)
+        const hasRemove = changes.some(c => c.type === 'remove')
+        if (hasRemove) get().pushSnapshot()
+        set(s => ({ nodes: applyNodeChanges(changes, s.nodes) }))
+      },
+
+      onEdgesChange: changes => {
+        const hasRemove = changes.some(c => c.type === 'remove')
+        if (hasRemove) get().pushSnapshot()
+        set(s => ({ edges: applyEdgeChanges(changes, s.edges) }))
+      },
+
+      onConnect: connection => {
+        get().pushSnapshot()
+        set(s => ({ edges: addEdge({ ...connection, animated: true }, s.edges) }))
+      },
 
       updateNodeData: (id, patch) =>
         set(s => ({
@@ -90,7 +173,8 @@ export const useFlowStore = create<FlowState>()(
           ),
         })),
 
-      addNode: type => {
+      addNode: (type, position) => {
+        get().pushSnapshot()
         const id = `${type}-${++nodeCounter}`
         const defaults: Record<string, Record<string, unknown>> = {
           textInput:    { label: 'Text Input', value: '' },
@@ -119,13 +203,50 @@ export const useFlowStore = create<FlowState>()(
         const node: Node = {
           id,
           type,
-          position: { x: 200 + Math.random() * 200, y: 150 + Math.random() * 200 },
+          position: position ?? { x: 200 + Math.random() * 200, y: 150 + Math.random() * 200 },
           data: defaults[type] ?? {},
         }
         set(s => ({ nodes: [...s.nodes, node] }))
+        return id
+      },
+
+      duplicateNodes: (nodeIds: string[]) => {
+        get().pushSnapshot()
+        const { nodes, edges } = get()
+        const selected = nodes.filter(n => nodeIds.includes(n.id))
+        if (selected.length === 0) return
+
+        const idMap = new Map<string, string>()
+        const newNodes: Node[] = selected.map(n => {
+          const newId = `${n.type}-${++nodeCounter}`
+          idMap.set(n.id, newId)
+          return {
+            ...n,
+            id: newId,
+            position: { x: n.position.x + 40, y: n.position.y + 40 },
+            data: { ...n.data },
+            selected: false,
+          }
+        })
+
+        // Duplicate edges between selected nodes
+        const newEdges: Edge[] = edges
+          .filter(e => idMap.has(e.source) && idMap.has(e.target))
+          .map(e => ({
+            ...e,
+            id: `e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            source: idMap.get(e.source)!,
+            target: idMap.get(e.target)!,
+          }))
+
+        set(s => ({
+          nodes: [...s.nodes, ...newNodes],
+          edges: [...s.edges, ...newEdges],
+        }))
       },
 
       loadFlow: (nodes, edges) => {
+        get().pushSnapshot()
         set({ nodes, edges, isRunning: false })
       },
 
@@ -182,6 +303,9 @@ export const useFlowStore = create<FlowState>()(
       onRehydrateStorage: () => state => {
         if (!state) return
         state.isRunning = false
+        // Clear history on rehydrate — stale snapshots reference old state
+        state.past = []
+        state.future = []
         state.nodes = state.nodes.map(n => {
           if (n.type === 'model')
             return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined } }
@@ -211,6 +335,7 @@ export const useFlowStore = create<FlowState>()(
       partialize: s => ({
         apiKey: s.apiKey,
         edges: s.edges,
+        // Don't persist history — it's ephemeral session state
         nodes: s.nodes.map(n => {
           if (n.type === 'model')
             return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined } }

@@ -29,6 +29,11 @@ import { VariableStoreNode } from './components/nodes/VariableStoreNode'
 // Multimodal nodes
 import { ImageInputNode }    from './components/nodes/ImageInputNode'
 import { ImageOutputNode }   from './components/nodes/ImageOutputNode'
+// Agentic nodes
+import { EvaluatorNode }     from './components/nodes/EvaluatorNode'
+import { SubFlowNode }       from './components/nodes/SubFlowNode'
+import { LoopNode }          from './components/nodes/LoopNode'
+import { ModelRouterNode }   from './components/nodes/ModelRouterNode'
 // UX components
 import { NodePicker }        from './components/NodePicker'
 import { ApiKeyBar }         from './components/ApiKeyBar'
@@ -54,6 +59,11 @@ const nodeTypes = {
   // Multimodal
   imageInput:     ImageInputNode,
   imageOutput:    ImageOutputNode,
+  // Agentic
+  evaluator:      EvaluatorNode,
+  subFlow:        SubFlowNode,
+  loop:           LoopNode,
+  modelRouter:    ModelRouterNode,
 }
 
 export default function App() {
@@ -165,15 +175,20 @@ export default function App() {
                 // Multimodal
                 if (n.type === 'imageInput')  return '#9333ea'
                 if (n.type === 'imageOutput') return '#7c3aed'
+                // Agentic
+                if (n.type === 'evaluator')   return '#a16207'
+                if (n.type === 'subFlow')     return '#7e22ce'
+                if (n.type === 'loop')        return '#7e22ce'
+                if (n.type === 'modelRouter') return '#0369a1'
                 return '#52525b'
               }}
               style={{ background: '#18181b' }}
             />
+            <ContextMenu />
           </ReactFlow>
         </div>
       </div>
-      {/* Overlay menus rendered outside ReactFlow for fixed positioning */}
-      <ContextMenu />
+      {/* QuickConnectMenu doesn't need ReactFlow context, safe outside */}
       <QuickConnectMenu />
     </div>
   )

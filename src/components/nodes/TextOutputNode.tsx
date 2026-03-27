@@ -23,8 +23,17 @@ export function TextOutputNode({ id, data, selected }: NodeProps) {
         id="in"
         style={{ background: PORT_COLORS.text, width: 10, height: 10 }}
       />
-      <div className="node-header bg-emerald-700" onDoubleClick={() => updateNodeData(id, { collapsed: !collapsed })}>
+      <div className="node-header bg-emerald-700 flex justify-between items-center" onDoubleClick={() => updateNodeData(id, { collapsed: !collapsed })}>
         <span>{collapsed ? '▸' : '▾'} 📄 Output</span>
+        {d.value && (
+          <button
+            className="text-[10px] text-zinc-400 hover:text-zinc-200 px-1 leading-none"
+            title="Copy content"
+            onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(d.value) }}
+          >
+            📋
+          </button>
+        )}
       </div>
       {!collapsed && (
         <div className="p-3 min-h-16 max-h-64 overflow-y-auto">

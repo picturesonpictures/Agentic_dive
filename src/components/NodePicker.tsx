@@ -10,6 +10,7 @@ const NODE_TYPES = [
   { group: 'Models',
     nodes: [
       { type: 'model', label: '🤖 Model', desc: 'Calls an LLM via OpenRouter' },
+      { type: 'modelRouter', label: '🧭 Router', desc: 'Pick best model for task' },
     ]
   },
   { group: 'Outputs',
@@ -27,6 +28,7 @@ const NODE_TYPES = [
   { group: 'Logic',
     nodes: [
       { type: 'conditional', label: '🔀 Conditional', desc: 'Route by condition' },
+      { type: 'evaluator', label: '⚖️ Evaluator', desc: 'LLM quality gate (pass/fail)' },
     ]
   },
   { group: 'Code',
@@ -44,6 +46,12 @@ const NODE_TYPES = [
     nodes: [
       { type: 'imageInput',  label: '🖼️ Image Input',  desc: 'Upload/paste/URL image' },
       { type: 'imageOutput', label: '🖼️ Image Output', desc: 'Display image result' },
+    ]
+  },
+  { group: 'Composition',
+    nodes: [
+      { type: 'subFlow', label: '📦 Sub-Flow', desc: 'Run a saved flow as a node' },
+      { type: 'loop', label: '🔄 Loop', desc: 'Iterate sub-flow with feedback' },
     ]
   },
   { group: 'Utilities',

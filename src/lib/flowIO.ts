@@ -49,6 +49,18 @@ function stripRuntime(nodes: Node[]): Node[] {
     if (n.type === 'jsonExtract' || n.type === 'conditional') {
       return { ...n, data: { ...n.data, output: '', error: undefined } }
     }
+    if (n.type === 'evaluator') {
+      return { ...n, data: { ...n.data, output: '', verdict: '', status: 'idle', error: undefined } }
+    }
+    if (n.type === 'subFlow') {
+      return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, currentStep: '' } }
+    }
+    if (n.type === 'loop') {
+      return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, iteration: 0, iterationLog: [] } }
+    }
+    if (n.type === 'modelRouter') {
+      return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, reasoning: '' } }
+    }
     return n
   })
 }

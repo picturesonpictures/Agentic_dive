@@ -71,6 +71,25 @@ export function ContextMenu() {
             onClick={() => {
               const node = getNodes().find(n => n.id === targetId)
               if (node) {
+                const d = node.data as Record<string, unknown>
+                const content =
+                  (d.output as string) ||
+                  (d.value as string) ||
+                  (d.template as string) ||
+                  (d.code as string) ||
+                  ''
+                if (content) navigator.clipboard.writeText(content)
+              }
+              handleClose()
+            }}
+          >
+            📋 Copy Content
+          </div>
+          <div
+            className="context-menu-item"
+            onClick={() => {
+              const node = getNodes().find(n => n.id === targetId)
+              if (node) {
                 updateNodeData(targetId, { collapsed: !(node.data as Record<string, unknown>).collapsed })
               }
               handleClose()

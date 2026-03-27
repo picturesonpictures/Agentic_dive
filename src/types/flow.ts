@@ -153,6 +153,60 @@ export interface STTData {
   error?: string
 }
 
+// ─── Agentic Node Data ──────────────────────────────────────────────────────
+
+export interface EvaluatorNodeData {
+  model: string
+  temperature: number
+  output: string
+  verdict: 'pass' | 'fail' | ''
+  status: 'idle' | 'running' | 'done' | 'error'
+  error?: string
+}
+
+export interface SubFlowNodeData {
+  flowName: string
+  inputMappings: Array<{ handleId: string; subFlowNodeId: string }>
+  outputMappings: Array<{ handleId: string; subFlowNodeId: string }>
+  output: string
+  status: 'idle' | 'running' | 'done' | 'error'
+  error?: string
+  currentStep?: string
+}
+
+export interface LoopNodeData {
+  flowName: string
+  maxIterations: number
+  breakMode: 'evaluator' | 'regex' | 'max-only'
+  breakPattern: string
+  evaluatorModel: string
+  inputMappings: Array<{ handleId: string; subFlowNodeId: string }>
+  outputMappings: Array<{ handleId: string; subFlowNodeId: string }>
+  feedbackOutputHandle: string
+  feedbackInputHandle: string
+  output: string
+  status: 'idle' | 'running' | 'done' | 'error'
+  error?: string
+  iteration: number
+  iterationLog: string[]
+}
+
+export interface ModelRouterNodeData {
+  routingMode: 'rule-based' | 'llm-based'
+  rules: Array<{
+    condition: 'cost-under' | 'context-over' | 'has-tag' | 'provider-is'
+    value: string
+    modelId: string
+  }>
+  fallbackModel: string
+  routerModel: string
+  routerTemperature: number
+  output: string
+  status: 'idle' | 'running' | 'done' | 'error'
+  error?: string
+  reasoning?: string
+}
+
 // ─── Available Models ─────────────────────────────────────────────────────────
 
 export interface ModelOption {

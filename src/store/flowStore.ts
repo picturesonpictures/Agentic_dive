@@ -152,7 +152,21 @@ export const useFlowStore = create<FlowState>()(
         // Snapshot before structural changes (remove)
         const hasRemove = changes.some(c => c.type === 'remove')
         if (hasRemove) get().pushSnapshot()
-        set(s => ({ nodes: applyNodeChanges(changes, s.nodes) }))
+        set(s => {
+          const newNodes = applyNodeChanges(changes, s.nodes)
+          // Persist width into data so node components can read it from Zustand
+          const dimChanges = changes.filter(
+            c => c.type === 'dimensions' && (c as { resizing?: boolean }).resizing
+          ) as Array<{ id: string; dimensions?: { width: number; height: number } }>
+          if (dimChanges.length === 0) return { nodes: newNodes }
+          return {
+            nodes: newNodes.map(n => {
+              const dc = dimChanges.find(c => c.id === n.id)
+              if (!dc?.dimensions) return n
+              return { ...n, data: { ...n.data, width: dc.dimensions.width } }
+            }),
+          }
+        })
       },
 
       onEdgesChange: changes => {
@@ -199,6 +213,11 @@ export const useFlowStore = create<FlowState>()(
           imageGen:       { model: 'dall-e-3', size: '1024x1024', quality: 'standard', style: 'vivid', output: '', status: 'idle' },
           tts:            { model: 'tts-1', voice: 'alloy', speed: 1.0, output: '', status: 'idle' },
           stt:            { model: 'whisper-1', language: '', output: '', status: 'idle' },
+          // Agentic nodes
+          evaluator:      { model: 'openrouter/auto', temperature: 0.2, output: '', verdict: '', status: 'idle' },
+          subFlow:        { flowName: '', inputMappings: [], outputMappings: [], output: '', status: 'idle' },
+          loop:           { flowName: '', maxIterations: 5, breakMode: 'evaluator', breakPattern: '', evaluatorModel: 'openrouter/auto', inputMappings: [], outputMappings: [], feedbackOutputHandle: '', feedbackInputHandle: '', output: '', status: 'idle', iteration: 0, iterationLog: [] },
+          modelRouter:    { routingMode: 'rule-based', rules: [], fallbackModel: 'openrouter/auto', routerModel: 'openrouter/auto', routerTemperature: 0.3, output: '', status: 'idle' },
         }
         const node: Node = {
           id,
@@ -271,6 +290,10 @@ export const useFlowStore = create<FlowState>()(
             if (n.type === 'imageOutput') return { ...n, data: { ...n.data, value: '' } }
             if (n.type === 'audioOutput') return { ...n, data: { ...n.data, value: '' } }
             if (n.type === 'fileInput') return { ...n, data: { ...n.data, extractedText: '', error: undefined } }
+            if (n.type === 'evaluator') return { ...n, data: { ...n.data, output: '', verdict: '', status: 'idle', error: undefined } }
+            if (n.type === 'subFlow') return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, currentStep: '' } }
+            if (n.type === 'loop') return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, iteration: 0, iterationLog: [] } }
+            if (n.type === 'modelRouter') return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, reasoning: '' } }
             return n
           }),
         }))
@@ -329,6 +352,14 @@ export const useFlowStore = create<FlowState>()(
             return { ...n, data: { ...n.data, value: '' } }
           if (n.type === 'audioOutput')
             return { ...n, data: { ...n.data, value: '' } }
+          if (n.type === 'evaluator')
+            return { ...n, data: { ...n.data, output: '', verdict: '', status: 'idle', error: undefined } }
+          if (n.type === 'subFlow')
+            return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, currentStep: '' } }
+          if (n.type === 'loop')
+            return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, iteration: 0, iterationLog: [] } }
+          if (n.type === 'modelRouter')
+            return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, reasoning: '' } }
           return n
         })
       },
@@ -359,6 +390,14 @@ export const useFlowStore = create<FlowState>()(
             return { ...n, data: { ...n.data, value: '' } }
           if (n.type === 'audioOutput')
             return { ...n, data: { ...n.data, value: '' } }
+          if (n.type === 'evaluator')
+            return { ...n, data: { ...n.data, output: '', verdict: '', status: 'idle', error: undefined } }
+          if (n.type === 'subFlow')
+            return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, currentStep: '' } }
+          if (n.type === 'loop')
+            return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, iteration: 0, iterationLog: [] } }
+          if (n.type === 'modelRouter')
+            return { ...n, data: { ...n.data, output: '', status: 'idle', error: undefined, reasoning: '' } }
           return n
         }),
       }),

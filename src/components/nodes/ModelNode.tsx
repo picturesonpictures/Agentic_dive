@@ -53,7 +53,9 @@ export function ModelNode({ id, data, selected }: NodeProps) {
       <Handle type="target" position={Position.Left} id="images"
         style={{ background: PORT_COLORS.image, top: '66%', width: 10, height: 10 }} />
       <Handle type="target" position={Position.Left} id="audio"
-        style={{ background: PORT_COLORS.audio, top: '84%', width: 10, height: 10 }} />
+        style={{ background: PORT_COLORS.audio, top: '76%', width: 10, height: 10 }} />
+      <Handle type="target" position={Position.Left} id="model_override"
+        style={{ background: PORT_COLORS.any, top: '92%', width: 10, height: 10 }} />
 
       <div className="node-header bg-violet-700 flex justify-between items-center"
         onDoubleClick={() => updateNodeData(id, { collapsed: !collapsed })}>
@@ -112,6 +114,7 @@ export function ModelNode({ id, data, selected }: NodeProps) {
             <span>← system prompt</span>
             <span className="text-purple-400/60">← images (vision)</span>
             <span className="text-amber-400/60">← audio</span>
+            <span className="text-zinc-500/60">← model override</span>
           </div>
 
           {/* Config toggle */}

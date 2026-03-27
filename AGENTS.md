@@ -195,11 +195,11 @@ The following agents form a unified quality-feedback system for AI-generated flo
 
 #### 1. **Flow Analyst** (`.github/agents/flow-analyst.agent.md`)
 
-**Purpose**: Validates generated flows against 5-tier quality criteria.
+**Purpose**: Validates generated flows against 6-tier quality criteria (including runtime executability).
 
 **Input**: FlowFile JSON + original description
 
-**Output**: Structured feedback (status: pass | fail | needs-refinement)
+**Output**: Structured feedback (status: pass | fail | needs-refinement) + quality score (0-100)
 
 **Tiers**:
 
@@ -208,8 +208,9 @@ The following agents form a unified quality-feedback system for AI-generated flo
 3. Layout & readability (canvas organization, left-to-right flow)
 4. Intent alignment (does it solve the original description?)
 5. Optimization opportunities (suggestions for improvement)
+6. Runtime executability pre-flight (obvious blockers before execution)
 
-**Use**: Validate any generated flow before running. Run after AI Architect generates.
+**Use**: Validate any generated flow before running. Provides architect-ready notes with nodeId/handle context.
 
 #### 2. **Flow Executor** (`.github/agents/flow-executor.agent.md`)
 
@@ -235,7 +236,7 @@ The following agents form a unified quality-feedback system for AI-generated flo
 
 **Input**: Natural language flow description + optional constraints (max iterations, focus areas)
 
-**Output**: Production-ready FlowFile JSON (validated + executed)
+**Output**: Production-ready FlowFile JSON (validated + executable)
 
 **Process**:
 
@@ -244,14 +245,16 @@ User description
   ↓ [Phase 1: Generate]
 AI Architect generates flow
   ↓ [Phase 2: Validate]
-Flow Analyst checks structure + intent
+Flow Analyst checks structure + intent + runtime pre-flight
+  ↓ [Phase 3: Execute]
+Flow Executor validates runtime behavior
   ↓ [Decision]
-  ├─ Status = pass → [Exit: Success]
-  ├─ Status = needs-refinement (iteration < max) → [Phase 3: Refine + loop]
-  └─ Status = fail → [Phase 3: Repair + loop]
+  ├─ Analyst=pass AND Executor=success → [Exit: Success]
+  ├─ needs-refinement/partial (iteration < max) → [Phase 4: Refine + loop]
+  └─ fail/failure → [Phase 4: Repair + loop]
 ```
 
-- Max 3 iterations (generate → validate → refine)
+- Max 3 iterations (generate → analyze → execute → refine)
 - Responsive feedback loops (architect gets specific repair prompts)
 - Partial success handling (if max iterations hit, return best attempt)
 
@@ -265,7 +268,7 @@ Flow Analyst checks structure + intent
 User (with description)
   → Flow Orchestrator
   → Phase 1: AI Architect (generates)
-  → Phase 2: Flow Analyst (validates structure + intent)
+  → Phase 2: Flow Analyst (validates structure + intent + runtime pre-flight)
   → Phase 3: Flow Executor (tests runtime)
   → If passes: Return to user ✅
   → If fails: Refine loop (back to Phase 1 with feedback)
@@ -283,7 +286,8 @@ User (with description)
 **Flow Analyst**:
 
 - `status`: pass | fail | needs-refinement
-- Per-tier pass/fail
+- `qualityScore`: 0-100 + readiness label
+- Per-tier pass/fail (6 tiers)
 - Blocking issues count
 - Unused node count
 
@@ -298,5 +302,5 @@ User (with description)
 
 - Iterations to success
 - Feedback convergence
-- Per-iteration pass/fail status
+- Per-iteration analyst/executor status
 - Final quality score (tiers passed)

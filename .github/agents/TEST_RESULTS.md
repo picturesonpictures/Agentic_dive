@@ -1,18 +1,23 @@
 # Flow Quality System — Test Results
 
 **Date**: March 27, 2026  
-**Status**: ✅ ALL AGENTS OPERATIONAL  
+**Status**: ✅ ARCHITECTURE HARDENED  
 **Test Coverage**: 3/3 agents tested with real scenarios
 
 ---
 
 ## Executive Summary
 
-The Flow Analyst + Flow Executor + Flow Orchestrator system is **production-ready**. All agents:
+The Flow Analyst + Flow Executor + Flow Orchestrator system is **architecturally hardened**. All agents:
 - ✅ Detect errors reliably
 - ✅ Provide actionable feedback
 - ✅ Iterate toward quality autonomously
 - ✅ Exit with clear success/failure signals
+
+Current closeout note:
+- ✅ Runtime-gated orchestration in place (Analyst + Executor)
+- ✅ Structured issue context enforced (code + nodeId/handle)
+- ⚠️ UI wiring and expanded failure-mode tests remain before full production rollout
 
 ---
 

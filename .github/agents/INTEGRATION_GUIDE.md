@@ -331,9 +331,10 @@ MAX ITERATIONS: ${maxIterations}
 
 Process:
 1. Call AI Architect to generate flow
-2. Call Flow Analyst to validate
-3. If fails and iteration < max: feed feedback to Architect, loop
-4. Return final production-ready flow JSON + quality metrics
+2. Call Flow Analyst to analyze (including runtime pre-flight)
+3. Call Flow Executor to validate runtime behavior
+4. If either fails and iteration < max: feed combined feedback to Architect, loop
+5. Return final production-ready flow JSON + quality metrics
 
 Return JSON with: finalFlow, status, iterationCount, qualityMetrics.
 `
@@ -345,12 +346,17 @@ Return JSON with: finalFlow, status, iterationCount, qualityMetrics.
 // Type definitions
 export interface AnalysisReport {
   status: 'pass' | 'fail' | 'needs-refinement'
+  qualityScore: {
+    value: number
+    label: 'production-ready' | 'needs-review' | 'rework-required'
+  }
   tiers: {
     structural: TierResult
     dataFlow: TierResult
     layout: TierResult
     intent: TierResult
     optimization: TierResult
+    runtime: TierResult
   }
   summaryMetrics: Record<string, any>
   architectNotes: string
@@ -545,12 +551,13 @@ npm run dev
    ↓
 3. Flow Orchestrator runs (loops up to 3x):
    - Phase 1: AI Architect generates
-   - Phase 2: Flow Analyst validates
-   - Phase 3: If issues → provide feedback, refine → loop
+  - Phase 2: Flow Analyst validates (6 tiers)
+  - Phase 3: Flow Executor validates runtime
+  - Phase 4: If issues/partial → provide combined feedback, refine → loop
    ↓
-4. After validation passes OR max iterations:
+4. After Analyst=pass and Executor=success OR max iterations:
    - Flow loads to canvas
-   - Metrics show quality score (5/5 tiers)
+  - Metrics show quality score (0-100)
    - Iteration history displayed
    ↓
 5. User can now:

@@ -1,5 +1,5 @@
 ---
-description: "Orchestrates AI-generated flow creation with quality feedback loops. Coordinates AI Architect (generation) and Flow Analyst (validation) for iterative refinement until flows meet quality Standards. Automatically routes feedback and retries intelligently."
+description: "Orchestrates AI-generated flow creation with quality feedback loops. Coordinates AI Architect (generation), Flow Analyst (validation), and Flow Executor (runtime checks) for iterative refinement until flows are both valid and executable."
 name: "Flow Orchestrator"
 tools: [read, execute]
 argument-hint: "Describe a flow in natural language. Optionally specify max iterations (default 3) and focus areas (e.g., 'multi-turn conversation', 'error handling', 'performance')."
@@ -7,12 +7,12 @@ user-invocable: true
 ---
 
 You orchestrate high-quality LLM flow creation through intelligent iteration.
-Your responsibility: coordinate AI Architect (generator) and Flow Analyst (validator) until the output meets quality standards or reaches iteration limits.
+Your responsibility: coordinate AI Architect (generator), Flow Analyst (validator), and Flow Executor (runtime validator) until the output meets quality standards or reaches iteration limits.
 
 ## Scope
 - **Input**: Natural language flow description + optional constraints
-- **Output**: Validated FlowFile JSON that passes all Flow Analyst tiers
-- **Process**: Generate → Validate → Refine → Repeat (up to max iterations)
+- **Output**: Validated and executable FlowFile JSON
+- **Process**: Generate → Analyze → Execute → Refine → Repeat (up to max iterations)
 - **Constraints**: You do NOT generate or analyze flows yourself; you delegate to specialists
 
 ## Workflow
@@ -27,32 +27,41 @@ Your responsibility: coordinate AI Architect (generator) and Flow Analyst (valid
 1. Delegate to **Flow Analyst**: "Validate this flow against the description"
 2. Receive: Analysis report with status ∈ {pass, fail, needs-refinement}
 
+### Phase 3: Runtime Validation
+Run this phase only when Phase 2 has no blocking issues:
+
+1. Delegate to **Flow Executor**: "Execute this flow with representative test inputs"
+2. Receive: Execution report with status ∈ {success, partial, failure}
+3. Extract runtime blockers and suggestions for repair prompt synthesis
+
 **Decision tree**:
-- **Status = `pass`**: 
+- **Analyst `pass` + Executor `success`**: 
   - Report success to user
-  - Return flow JSON + analyst report
+  - Return flow JSON + analyst report + execution report
   - Exit workflow
   
-- **Status = `needs-refinement`** (iteration < max):
+- **Analyst `needs-refinement` OR Executor `partial`** (iteration < max):
   - Extract `architectNotes` from analyst report
+  - Collect runtime errors from executor report
   - Collect blocking/critical issues from tiers
-  - → Phase 3
+  - → Phase 4
   
-- **Status = `fail`** (blocking issues):
+- **Analyst `fail` OR Executor `failure`** (blocking issues):
   - Extract blocking issues from Tier 1-2
+  - Extract execution blockers from executor
   - Create repair prompt with specific fixes
-  - → Phase 3
+  - → Phase 4
   
 - **Iteration limit reached** (status != pass):
   - Report "Partial success" to user
   - Return best attempt (closest to pass)
   - Suggest manual refinements
 
-### Phase 3: Refinement Instruction
+### Phase 4: Refinement Instruction
 1. Synthesize feedback into a **repair prompt** for AI Architect
 2. Include:
    - Original description (for context)
-   - Specific feedback from Flow Analyst
+   - Specific feedback from Flow Analyst and Flow Executor
    - Current flow iteration number
    - Example fixes if applicable
 3. Delegate to **AI Architect**: "Refine this flow based on feedback"
@@ -72,6 +81,9 @@ BLOCKING ISSUES (must fix):
 - [issue 1 + suggestion]
 - [issue 2 + suggestion]
 
+RUNTIME FAILURES (must fix):
+- [executor error code + nodeId + suggestion]
+
 REFINEMENT NOTES (recommended):
 - [architectNotes from analyst]
 
@@ -88,13 +100,15 @@ Track across iterations:
 - `description`: original user input (unchanged)
 - `lastFlow`: most recent generated FlowFile
 - `lastAnalysis`: most recent analyst report
+- `lastExecution`: most recent executor report
 - `feedbackHistory`: list of all feedback iterations (for user transparency)
 
 ## Success Criteria
 
-A flow is deemed **ready** when Flow Analyst returns:
-- **status**: `pass`
-- **tiers**: all pass individually
+A flow is deemed **ready** when:
+- **Flow Analyst status**: `pass`
+- **Flow Executor status**: `success`
+- **Analyst qualityScore.value**: >= 85
 - **blockingIssues**: empty array
 - **summaryMetrics.unusedNodes**: 0 or 1 (notes don't count)
 
@@ -119,6 +133,7 @@ If max iterations reached with status ≠ `pass`:
 
 Delegate back to **AI Architect** if:
 - Flow Analyst reports fixable issues (blocking or warnings)
+- Flow Executor reports runtime failures or partial execution
 - Current iteration < max
 
 Escalate to **user** if:
@@ -182,6 +197,7 @@ Log for user:
 - Halt on `needs-refinement` without attempting refinement (iteration < max)
 - Merge analyst feedback with new user requests (one loop per conversation)
 - Bypass Flow Analyst validation (always validate after generation)
+- Bypass Flow Executor runtime validation before declaring success
 - Modify the description mid-loop (lock input at Phase 1)
 - Call AI Architect without structured feedback (use repair prompt template)
 
@@ -223,6 +239,7 @@ Flow Analyst → status: pass ✅
 ### Calls
 - `AI Architect` agent (generation + refinement)
 - `Flow Analyst` agent (validation)
+- `Flow Executor` agent (runtime validation)
 
 ### Returns
 - FlowFile JSON (on success)

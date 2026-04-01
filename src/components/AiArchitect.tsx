@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useFlowStore } from '../store/flowStore'
 import { generateFlow } from '../lib/aiArchitect'
 import { FLOW_TEMPLATES, TEMPLATE_CATEGORIES, type FlowTemplate } from '../lib/flowTemplates'
+import { useModels } from '../hooks/useModels'
 
 // ─── AI Architect ─────────────────────────────────────────────────────────────
 // Two modes:
@@ -26,6 +27,7 @@ type Tab = 'templates' | 'generate'
 export function AiArchitect({ open, onClose }: Props) {
   const apiKey = useFlowStore(s => s.apiKey)
   const loadFlow = useFlowStore(s => s.loadFlow)
+  const { models: allModels } = useModels()
 
   const [tab, setTab] = useState<Tab>('templates')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -67,6 +69,7 @@ export function AiArchitect({ open, onClose }: Props) {
         (text) => {
           if (!abortRef.current) setPreview(text)
         },
+        allModels,
       )
 
       if (abortRef.current) return
@@ -259,14 +262,18 @@ export function AiArchitect({ open, onClose }: Props) {
                   onChange={e => setModel(e.target.value)}
                   disabled={generating}
                 >
-                  <option value="openrouter/auto">Auto (best for task)</option>
-                  <option value="anthropic/claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                  <option value="anthropic/claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-                  <option value="openai/gpt-4o">GPT-4o</option>
-                  <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
-                  <option value="google/gemini-2.5-pro-preview">Gemini 2.5 Pro</option>
-                  <option value="google/gemini-2.5-flash-preview">Gemini 2.5 Flash</option>
-                  <option value="deepseek/deepseek-chat">DeepSeek V3</option>
+                  {Object.entries(
+                    allModels.reduce<Record<string, typeof allModels>>((acc, m) => {
+                      (acc[m.group] ??= []).push(m)
+                      return acc
+                    }, {})
+                  ).map(([group, groupModels]) => (
+                    <optgroup key={group} label={group}>
+                      {groupModels.map(m => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
 

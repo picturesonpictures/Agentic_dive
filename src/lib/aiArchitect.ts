@@ -1,5 +1,6 @@
 import { streamCompletion } from './openrouter'
 import type { Node, Edge } from '@xyflow/react'
+import type { ModelOption } from '../types/flow'
 
 // ─── AI Architect ─────────────────────────────────────────────────────────────
 // Takes a natural language description and generates a FlowFile (nodes + edges)
@@ -36,7 +37,14 @@ Use for: system instructions for a model
 Data: { model: string, systemPrompt: "", temperature: 0.7, output: "", status: "idle" }
 Handles: target "user", target "system", source "out"
 Use for: calling an LLM. Connect text to "user" handle, system prompt to "system" handle.
-Model IDs: "openrouter/auto", "anthropic/claude-sonnet-4-6", "openai/gpt-4o", "google/gemini-2.5-pro-preview", "deepseek/deepseek-chat", "meta-llama/llama-3.3-70b-instruct"
+Model IDs: see MODEL CATALOG below for available models and their capabilities.
+Choose models based on the task requirements:
+- Need image input? Pick a model with "image" in input modalities
+- Need tool use? Pick a model with "tools" capability
+- Need cheap/free? Pick models with low cost or "ollama/" prefix (free, local)
+- Need reasoning? Pick a model with "reasoning" capability
+- Default safe choice: "openrouter/auto"
+- Default free/local choice: "ollama/qwen3.5:27b"
 
 ### textOutput
 Data: { value: "" }
@@ -152,12 +160,38 @@ export interface GenerateFlowResult {
   edges: Edge[]
 }
 
+function buildModelCatalog(models: ModelOption[]): string {
+  // Pick top ~40 most relevant models to keep prompt size manageable
+  const priority = models.filter(m =>
+    m.id.startsWith('ollama/') ||
+    m.tags?.some(t => ['vision', 'reasoning', 'fast', 'cheap', 'free'].includes(t)) ||
+    ['openrouter/auto', 'anthropic/claude-sonnet-4-6', 'openai/gpt-4o', 'google/gemini-2.5-pro-preview'].includes(m.id)
+  ).slice(0, 40)
+
+  // Fall back to curated list if nothing matched
+  const list = priority.length > 5 ? priority : models.slice(0, 40)
+
+  return list.map(m => {
+    const parts = [m.id]
+    if (m.inputModalities?.length) parts.push(`in:[${m.inputModalities.join(',')}]`)
+    if (m.outputModalities?.length) parts.push(`out:[${m.outputModalities.join(',')}]`)
+    if (m.capabilities?.length) parts.push(`can:[${m.capabilities.join(',')}]`)
+    if (m.pricePer1M) parts.push(m.pricePer1M.input === 0 ? 'FREE' : `$${m.pricePer1M.input}/$${m.pricePer1M.output}/1M`)
+    if (m.context) parts.push(`ctx:${m.context}`)
+    return parts.join(' | ')
+  }).join('\n')
+}
+
 export async function generateFlow(
   apiKey: string,
   description: string,
   model: string = 'openrouter/auto',
   onProgress?: (text: string) => void,
+  availableModels?: ModelOption[],
 ): Promise<GenerateFlowResult> {
+  const catalog = availableModels ? `\n\n## MODEL CATALOG\n${buildModelCatalog(availableModels)}` : ''
+  const fullPrompt = SYSTEM_PROMPT + catalog
+
   return new Promise((resolve, reject) => {
     let accumulated = ''
 
@@ -165,7 +199,7 @@ export async function generateFlow(
       apiKey,
       model,
       [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: fullPrompt },
         { role: 'user', content: description },
       ],
       // onChunk

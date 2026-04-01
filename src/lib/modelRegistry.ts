@@ -83,6 +83,12 @@ interface OpenRouterModel {
     prompt?: string
     completion?: string
   }
+  architecture?: {
+    modality?: string
+    input_modalities?: string[]
+    output_modalities?: string[]
+  }
+  supported_parameters?: string[]
   top_provider?: {
     is_moderated?: boolean
   }
@@ -103,13 +109,29 @@ async function fetchFromAPI(apiKey: string): Promise<ModelOption[]> {
 
   return json.data
     .filter(m => m.id && m.name)
-    .map(m => ({
-      id: m.id,
-      label: m.name,
-      group: inferGroup(m.id),
-      context: formatContext(m.context_length),
-      price: formatPrice(m.pricing?.prompt, m.pricing?.completion),
-    }))
+    .map(m => {
+      const promptPer1M = parseFloat(m.pricing?.prompt ?? '0') * 1_000_000
+      const completionPer1M = parseFloat(m.pricing?.completion ?? '0') * 1_000_000
+
+      // Derive capability tags from supported_parameters
+      const caps: string[] = []
+      const params = m.supported_parameters ?? []
+      if (params.includes('tools')) caps.push('tools')
+      if (params.includes('reasoning') || params.includes('include_reasoning')) caps.push('reasoning')
+      if (params.includes('structured_outputs')) caps.push('structured_outputs')
+
+      return {
+        id: m.id,
+        label: m.name,
+        group: inferGroup(m.id),
+        context: formatContext(m.context_length),
+        price: formatPrice(m.pricing?.prompt, m.pricing?.completion),
+        pricePer1M: { input: promptPer1M, output: completionPer1M },
+        inputModalities: m.architecture?.input_modalities,
+        outputModalities: m.architecture?.output_modalities,
+        capabilities: caps.length > 0 ? caps : undefined,
+      }
+    })
     .sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label))
 }
 

@@ -213,9 +213,16 @@ export interface ModelOption {
   id: string
   label: string
   group: string
-  context?: string   // e.g. "1M"
-  price?: string     // e.g. "$3/$15"
-  tags?: string[]    // e.g. ["vision", "fast", "free"]
+  context?: string           // e.g. "1M"
+  price?: string             // formatted e.g. "$3/$15"
+  pricePer1M?: {             // raw cost per 1M tokens
+    input: number            // e.g. 3.00
+    output: number           // e.g. 15.00
+  }
+  inputModalities?: string[] // e.g. ["text", "image", "audio", "file"]
+  outputModalities?: string[] // e.g. ["text", "image", "audio"]
+  capabilities?: string[]    // e.g. ["tools", "reasoning", "web_search", "structured_outputs"]
+  tags?: string[]            // e.g. ["vision", "fast", "free"]
 }
 
 export const MODELS: ModelOption[] = [
@@ -274,8 +281,8 @@ export const MODELS: ModelOption[] = [
   { id: 'perplexity/sonar',     label: 'Sonar',     group: '🔍 Perplexity', context: '127K', price: '$1/$1',  tags: ['web-search'] },
 
   // ── Ollama (local) ───────────────────────────────────────────────────────
-  { id: 'ollama/qwen3.5:27b', label: 'Qwen 3.5 27B (local)', group: '🏠 Ollama', context: '262K', price: 'free', tags: ['local', 'vision', 'reasoning'] },
-  { id: 'ollama/qwen3.5:35b', label: 'Qwen 3.5 35B MoE (local)', group: '🏠 Ollama', context: '262K', price: 'free', tags: ['local', 'fast'] },
+  { id: 'ollama/qwen3.5:27b', label: 'Qwen 3.5 27B (local)', group: '🏠 Ollama', context: '262K', price: 'free', pricePer1M: { input: 0, output: 0 }, inputModalities: ['text', 'image'], outputModalities: ['text'], capabilities: ['tools', 'reasoning'], tags: ['local', 'vision', 'reasoning'] },
+  { id: 'ollama/qwen3.5:35b', label: 'Qwen 3.5 35B MoE (local)', group: '🏠 Ollama', context: '262K', price: 'free', pricePer1M: { input: 0, output: 0 }, inputModalities: ['text', 'image'], outputModalities: ['text'], capabilities: ['tools', 'reasoning'], tags: ['local', 'fast'] },
 ]
 
 export const MODEL_GROUPS = [...new Set(MODELS.map(m => m.group))]

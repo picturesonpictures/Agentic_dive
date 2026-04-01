@@ -5,16 +5,22 @@ import { dataUrlToBlob } from './flowValue'
 // dangerouslyAllowBrowser is required for direct browser calls (no backend).
 // The user's key never leaves their machine — it goes directly to OpenRouter.
 
-function makeClient(apiKey: string) {
+function makeClient(apiKey: string, model?: string) {
+  const isOllama = model?.startsWith('ollama/')
   return new OpenAI({
-    apiKey,
-    baseURL: 'https://openrouter.ai/api/v1',
-    defaultHeaders: {
+    apiKey: isOllama ? 'ollama' : apiKey,
+    baseURL: isOllama ? 'http://localhost:11434/v1' : 'https://openrouter.ai/api/v1',
+    defaultHeaders: isOllama ? {} : {
       'HTTP-Referer': 'https://llm-flow-builder',
       'X-Title': 'LLM Flow Builder',
     },
     dangerouslyAllowBrowser: true,
   })
+}
+
+// Strip the "ollama/" prefix so Ollama gets the raw model name it expects
+function resolveModelId(model: string): string {
+  return model.startsWith('ollama/') ? model.slice(7) : model
 }
 
 // ─── Multimodal Message Types ────────────────────────────────────────────────
@@ -43,23 +49,44 @@ export async function streamCompletion(
   onError: (err: string) => void,
   temperature = 0.7,
 ): Promise<void> {
-  const client = makeClient(apiKey)
+  const client = makeClient(apiKey, model)
   let full = ''
 
   try {
     const stream = await client.chat.completions.create({
-      model,
+      model: resolveModelId(model),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       messages: messages as any,
       temperature,
       stream: true,
     })
 
+    let inThink = false
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content ?? ''
-      if (delta) {
-        full += delta
-        onChunk(delta)
+      if (!delta) continue
+
+      // Strip <think>...</think> blocks from thinking models (e.g. Qwen 3.5)
+      let remaining = delta
+      while (remaining) {
+        if (inThink) {
+          const closeIdx = remaining.indexOf('</think>')
+          if (closeIdx === -1) { remaining = ''; break }
+          remaining = remaining.slice(closeIdx + 8)
+          inThink = false
+        } else {
+          const openIdx = remaining.indexOf('<think>')
+          if (openIdx === -1) {
+            full += remaining
+            onChunk(remaining)
+            remaining = ''
+          } else {
+            const before = remaining.slice(0, openIdx)
+            if (before) { full += before; onChunk(before) }
+            remaining = remaining.slice(openIdx + 7)
+            inThink = true
+          }
+        }
       }
     }
 

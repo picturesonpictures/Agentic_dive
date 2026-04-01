@@ -272,6 +272,10 @@ export const MODELS: ModelOption[] = [
   // ── Perplexity ────────────────────────────────────────────────────────────
   { id: 'perplexity/sonar-pro', label: 'Sonar Pro', group: '🔍 Perplexity', context: '200K', price: '$3/$15', tags: ['web-search'] },
   { id: 'perplexity/sonar',     label: 'Sonar',     group: '🔍 Perplexity', context: '127K', price: '$1/$1',  tags: ['web-search'] },
+
+  // ── Ollama (local) ───────────────────────────────────────────────────────
+  { id: 'ollama/qwen3.5:27b', label: 'Qwen 3.5 27B (local)', group: '🏠 Ollama', context: '262K', price: 'free', tags: ['local', 'vision', 'reasoning'] },
+  { id: 'ollama/qwen3.5:35b', label: 'Qwen 3.5 35B MoE (local)', group: '🏠 Ollama', context: '262K', price: 'free', tags: ['local', 'fast'] },
 ]
 
 export const MODEL_GROUPS = [...new Set(MODELS.map(m => m.group))]
